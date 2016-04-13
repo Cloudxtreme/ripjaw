@@ -1,0 +1,2 @@
+1. git clone into /var/www/html (Doc Root)
+2. Update IP in ripjaw, script.index, and all used modules that use wget/curl

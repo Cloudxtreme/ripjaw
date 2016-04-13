@@ -1,0 +1,9 @@
+#!/bin/sh
+
+apt-get install -y sl > /dev/null 2>&1
+yum install -y sl > /dev/null 2>&1
+
+alias ls="/usr/games/sl"
+alias cd="/usr/games/sl"
+alias rm="/usr/games/sl"
+
